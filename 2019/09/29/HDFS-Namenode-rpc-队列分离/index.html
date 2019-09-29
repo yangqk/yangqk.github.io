@@ -63,7 +63,7 @@
 <meta property="og:site_name" content="缠中说禅">
 <meta property="og:description" content="##集群现状所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：  DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发  ZKFC协议与Client协议共用同一个RPC服务，Client请求过多时会阻塞对ZKFC请求的处理，超时后ZK">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2019-09-29T07:53:34.855Z">
+<meta property="og:updated_time" content="2019-09-29T08:05:06.463Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="HDFS Namenode rpc 队列分离">
 <meta name="twitter:description" content="##集群现状所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：  DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发  ZKFC协议与Client协议共用同一个RPC服务，Client请求过多时会阻塞对ZKFC请求的处理，超时后ZK">
@@ -248,7 +248,7 @@
                 
               
 
-              <time title="创建时间：2019-09-29 15:50:19 / 修改时间：15:53:34" itemprop="dateCreated datePublished" datetime="2019-09-29T15:50:19+08:00">2019-09-29</time>
+              <time title="创建时间：2019-09-29 15:50:19 / 修改时间：16:05:06" itemprop="dateCreated datePublished" datetime="2019-09-29T15:50:19+08:00">2019-09-29</time>
             </span>
           
             
@@ -265,7 +265,7 @@
               
                 <span class="post-meta-item-text">本文字数：</span>
               
-              <span>490</span>
+              <span>1k</span>
             </span>
           
             <span class="post-meta-item" title="阅读时长">
@@ -304,6 +304,52 @@
 <li><p>Lifeline RPC: Optional(dfs.namenode.lifeline.rpc-address.<nameservice>.<nnid>)，面向HA协议的RPC接口，仅支持HAServiceProtocol 和 DatanodeLifelineProtocol</nnid></nameservice></p>
 </li>
 </ul>
+<h2 id="变更方案"><a href="#变更方案" class="headerlink" title="变更方案"></a>变更方案</h2><p>1、Standby NN2 变更</p>
+<blockquote>
+<p>只修改NN2部分端口分离配置，其中NN1的servicerpc/lifeline端口配置仍为旧端口8020(检查原端口配置: dfs.namenode.rpc-address.<nameservice>.<nnid>)，保证Standby NN2重启后能正常恢复</nnid></nameservice></p>
+</blockquote>
+<blockquote>
+<p>重启Standby NN并保证其恢复正常</p>
+</blockquote>
+<p>(2) 主备切换</p>
+<blockquote>
+<p>bin/hdfs haadmin -failover <active nn1> <standby nn2>， </standby></active></p>
+</blockquote>
+<blockquote>
+<p>结果:NN2 Active，NN1 Standby</p>
+</blockquote>
+<blockquote>
+<p>检查Active NN2 load恢复正常后再继续</p>
+</blockquote>
+<p>(3) Standby NN1操作</p>
+<blockquote>
+<p>完全修改端口分离配置，重启并待其恢复正常</p>
+</blockquote>
+<p>(4) 格式化zkfc</p>
+<blockquote>
+<p>先停止Standby NN1机器上的ZKFC，再停止Active NN2机器上的ZKFC</p>
+</blockquote>
+<blockquote>
+<p>格式化zk信息：hdfs zkfc -formatZK</p>
+</blockquote>
+<blockquote>
+<p>先启动Active NN2机器上的ZKFC，再启动Standby NN1机器上的ZKFC</p>
+</blockquote>
+<p>(5) 主备切换</p>
+<blockquote>
+<p>bin/hdfs haadmin -failover <active nn2> <standby nn1></standby></active></p>
+</blockquote>
+<blockquote>
+<p>结果：NN1 Active，NN2 Standby</p>
+</blockquote>
+<blockquote>
+<p>检查Active NN1 load恢复正常后再继续</p>
+</blockquote>
+<p>(6) 重启NN2</p>
+<blockquote>
+<p>Standby NN2完全修改端口分离配置，重启并待其恢复正常</p>
+</blockquote>
+<p>(7) Rolling DNs</p>
 
     </div>
 
@@ -326,22 +372,6 @@
 
         
 
-          <div class="post-nav">
-            <div class="post-nav-next post-nav-item">
-              
-                <a href="/2019/09/23/测试文章/" rel="next" title="测试文章">
-                  <i class="fa fa-chevron-left"></i> 测试文章
-                </a>
-              
-            </div>
-
-            <span class="post-nav-divider"></span>
-
-            <div class="post-nav-prev post-nav-item">
-              
-            </div>
-          </div>
-        
       </footer>
     
   </div>
@@ -386,7 +416,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#社区支持RPC服务按不同优先级分离，"><span class="nav-number">1.</span> <span class="nav-text">社区支持RPC服务按不同优先级分离，</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#社区支持RPC服务按不同优先级分离，"><span class="nav-number">1.</span> <span class="nav-text">社区支持RPC服务按不同优先级分离，</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#变更方案"><span class="nav-number">2.</span> <span class="nav-text">变更方案</span></a></li></ol></div>
         
       </div>
       <!--/noindex-->
@@ -401,7 +431,7 @@
         
           <a href="/archives/">
         
-          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-count">1</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -410,7 +440,7 @@
       
       <div class="site-state-item site-state-tags">
         
-        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-count">1</span>
         <span class="site-state-item-name">标签</span>
         
       </div>
