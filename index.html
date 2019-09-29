@@ -228,7 +228,7 @@
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
             
-            <a href="/2019/09/29/HDFS-Namenode-rpc-队列分离/" class="post-title-link" itemprop="url">HDFS Namenode rpc 队列分离</a>
+            <a href="/2019/09/29/HDFS-Namenode-rpc-队列分离/" class="post-title-link" itemprop="url">HDFS Namenode rpc 队列拆分</a>
           
         </h1>
 
@@ -243,7 +243,7 @@
                 
               
 
-              <time title="创建时间：2019-09-29 15:50:19 / 修改时间：16:05:06" itemprop="dateCreated datePublished" datetime="2019-09-29T15:50:19+08:00">2019-09-29</time>
+              <time title="创建时间：2019-09-29 15:50:19 / 修改时间：16:28:28" itemprop="dateCreated datePublished" datetime="2019-09-29T15:50:19+08:00">2019-09-29</time>
             </span>
           
             
@@ -283,7 +283,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <p>##集群现状<br>所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：</p>
+          <h2 id="集群现状"><a href="#集群现状" class="headerlink" title="集群现状"></a>集群现状</h2><p>所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：</p>
 <ul>
 <li><p>DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发</p>
 </li>

@@ -55,18 +55,18 @@
   };
 </script>
 
-  <meta name="description" content="##集群现状所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：  DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发  ZKFC协议与Client协议共用同一个RPC服务，Client请求过多时会阻塞对ZKFC请求的处理，超时后ZK">
+  <meta name="description" content="集群现状所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：  DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发  ZKFC协议与Client协议共用同一个RPC服务，Client请求过多时会阻塞对ZKFC请求的处理，超时后ZKFC">
 <meta name="keywords" content="HDFS">
 <meta property="og:type" content="article">
-<meta property="og:title" content="HDFS Namenode rpc 队列分离">
+<meta property="og:title" content="HDFS Namenode rpc 队列拆分">
 <meta property="og:url" content="http://yoursite.com/2019/09/29/HDFS-Namenode-rpc-队列分离/index.html">
 <meta property="og:site_name" content="缠中说禅">
-<meta property="og:description" content="##集群现状所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：  DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发  ZKFC协议与Client协议共用同一个RPC服务，Client请求过多时会阻塞对ZKFC请求的处理，超时后ZK">
+<meta property="og:description" content="集群现状所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：  DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发  ZKFC协议与Client协议共用同一个RPC服务，Client请求过多时会阻塞对ZKFC请求的处理，超时后ZKFC">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2019-09-29T08:05:06.463Z">
+<meta property="og:updated_time" content="2019-09-29T08:28:28.589Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="HDFS Namenode rpc 队列分离">
-<meta name="twitter:description" content="##集群现状所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：  DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发  ZKFC协议与Client协议共用同一个RPC服务，Client请求过多时会阻塞对ZKFC请求的处理，超时后ZK">
+<meta name="twitter:title" content="HDFS Namenode rpc 队列拆分">
+<meta name="twitter:description" content="集群现状所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：  DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发  ZKFC协议与Client协议共用同一个RPC服务，Client请求过多时会阻塞对ZKFC请求的处理，超时后ZKFC">
   <link rel="canonical" href="http://yoursite.com/2019/09/29/HDFS-Namenode-rpc-队列分离/">
 
 
@@ -81,7 +81,7 @@
   };
 </script>
 
-  <title>HDFS Namenode rpc 队列分离 | 缠中说禅</title>
+  <title>HDFS Namenode rpc 队列拆分 | 缠中说禅</title>
   
 
 
@@ -232,7 +232,7 @@
       <meta itemprop="name" content="缠中说禅">
     </span>
       <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">HDFS Namenode rpc 队列分离
+        <h1 class="post-title" itemprop="name headline">HDFS Namenode rpc 队列拆分
 
           
         </h1>
@@ -248,7 +248,7 @@
                 
               
 
-              <time title="创建时间：2019-09-29 15:50:19 / 修改时间：16:05:06" itemprop="dateCreated datePublished" datetime="2019-09-29T15:50:19+08:00">2019-09-29</time>
+              <time title="创建时间：2019-09-29 15:50:19 / 修改时间：16:28:28" itemprop="dateCreated datePublished" datetime="2019-09-29T15:50:19+08:00">2019-09-29</time>
             </span>
           
             
@@ -288,7 +288,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <p>##集群现状<br>所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：</p>
+        <h2 id="集群现状"><a href="#集群现状" class="headerlink" title="集群现状"></a>集群现状</h2><p>所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：</p>
 <ul>
 <li><p>DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发</p>
 </li>
@@ -416,7 +416,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#社区支持RPC服务按不同优先级分离，"><span class="nav-number">1.</span> <span class="nav-text">社区支持RPC服务按不同优先级分离，</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#变更方案"><span class="nav-number">2.</span> <span class="nav-text">变更方案</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#集群现状"><span class="nav-number">1.</span> <span class="nav-text">集群现状</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#社区支持RPC服务按不同优先级分离，"><span class="nav-number">2.</span> <span class="nav-text">社区支持RPC服务按不同优先级分离，</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#变更方案"><span class="nav-number">3.</span> <span class="nav-text">变更方案</span></a></li></ol></div>
         
       </div>
       <!--/noindex-->
