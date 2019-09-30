@@ -55,28 +55,33 @@
   };
 </script>
 
-  <meta property="og:type" content="website">
-<meta property="og:title" content="缠中说禅">
-<meta property="og:url" content="http://yoursite.com/index.html">
+  <meta name="description" content="集群现状所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：  DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发  ZKFC协议与Client协议共用同一个RPC服务，Client请求过多时会阻塞对ZKFC请求的处理，超时后ZKFC">
+<meta name="keywords" content="HDFS">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HDFS Namenode rpc 队列拆分">
+<meta property="og:url" content="http://yoursite.com/2018/09/29/HDFS-Namenode-rpc-队列分离/index.html">
 <meta property="og:site_name" content="缠中说禅">
+<meta property="og:description" content="集群现状所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：  DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发  ZKFC协议与Client协议共用同一个RPC服务，Client请求过多时会阻塞对ZKFC请求的处理，超时后ZKFC">
 <meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-09-30T06:31:14.200Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="缠中说禅">
-  <link rel="canonical" href="http://yoursite.com/">
+<meta name="twitter:title" content="HDFS Namenode rpc 队列拆分">
+<meta name="twitter:description" content="集群现状所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：  DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发  ZKFC协议与Client协议共用同一个RPC服务，Client请求过多时会阻塞对ZKFC请求的处理，超时后ZKFC">
+  <link rel="canonical" href="http://yoursite.com/2018/09/29/HDFS-Namenode-rpc-队列分离/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome: true,
-    isPost: false,
+    isHome: false,
+    isPost: true,
     isPage: false,
     isArchive: false
   };
 </script>
 
-  <title>缠中说禅</title>
+  <title>HDFS Namenode rpc 队列拆分 | 缠中说禅</title>
   
 
 
@@ -208,140 +213,13 @@
 
           <div id="content" class="content">
             
+
   <div id="posts" class="posts-expand">
-        <article itemscope itemtype="http://schema.org/Article">
+      <article itemscope itemtype="http://schema.org/Article">
   
   
   
-  <div class="post-block home">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/09/30/HDFS-balancer-及磁盘均衡/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="欧文">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="缠中说禅">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-            
-            <a href="/2018/09/30/HDFS-balancer-及磁盘均衡/" class="post-title-link" itemprop="url">HDFS 副本及磁盘选择策略</a>
-          
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              
-                
-              
-
-              <time title="创建时间：2018-09-30 14:25:54" itemprop="dateCreated datePublished" datetime="2018-09-30T14:25:54+08:00">2018-09-30</time>
-            </span>
-          
-            
-
-            
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2019-09-30 15:50:49" itemprop="dateModified" datetime="2019-09-30T15:50:49+08:00">2019-09-30</time>
-              </span>
-            
-          
-
-          
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-file-word-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">本文字数：</span>
-              
-              <span>2.5k</span>
-            </span>
-          
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-clock-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              
-              <span>2 分钟</span>
-            </span>
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="Hdfs-BlockPlacementPolicy（副本放置策略、datanode选择策略）"><a href="#Hdfs-BlockPlacementPolicy（副本放置策略、datanode选择策略）" class="headerlink" title="Hdfs BlockPlacementPolicy（副本放置策略、datanode选择策略）"></a>Hdfs BlockPlacementPolicy（副本放置策略、datanode选择策略）</h2><p>主要用途：上传文件时决定文件在HDFS上存储的位置（具体到datanode上的具体存储介质，如具体到存储在哪块硬盘）；rebalance、datanode退出集群、副本数量更改等导致数据移动的操作中，数据移动的具体位置。<br>Hadoop提供了BlockPlacementPolicy的三种实现</p>
-<ul>
-<li>BlockPlacementPolicyDefault</li>
-<li>BlockPlacementPolicyWithNodeGroup</li>
-<li>AvailableSpaceBlockPlacementPolicy</li>
-</ul>
-<p>其中BlockPlacementPolicyDefault是经典三副本策略的实现：第一个副本尽可能放在写入数据的节点，第二个副本放在与第一个副本不在同一机架下的节点，第三个副本与第二副本放在同一个机架。<br>BlockPlacementPolicyWithNodeGroup 继承自BlockPlacementPolicyDefault ，前者与后者在原理上十分类似,不过在逻辑上从机架是否相同的判断变为了是否为同个Node-Group的判断。在rack 层下，又多了一层node-group ，然后才是node。</p>
-<p>AvailableSpaceBlockPlacementPolicy 是空闲空间选择策略，在集群中机器异构比较严重，机器之间的存储容量差别较大，同时balancer又来不及的时候，可能需要用到。</p>
-<p>通过改变dfs.block.replicator.classname 能够选择具体的实现类，默认值为org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault</p>
-<h2 id="Hdfs-VolumeChoosingPolicy（volume选择策略）"><a href="#Hdfs-VolumeChoosingPolicy（volume选择策略）" class="headerlink" title="Hdfs VolumeChoosingPolicy（volume选择策略）"></a>Hdfs VolumeChoosingPolicy（volume选择策略）</h2><p>Datanode 选盘目前支持2中模式：</p>
-<ul>
-<li>RoundRobin</li>
-<li>AvailableSpaceVolume</li>
-</ul>
-<p>使用第二种方式时，同时需要配置另外两个参数:</p>
-<ul>
-<li>dfs.datanode.available-space-volume-choosing-policy.balanced-space-threshold, 默认值是10737418240，既10G，一般使用默认值就行。首先计算出两个值，一个是所有磁盘中最大可用空间，另外一个值是所有磁盘中最小可用空间，如果这两个值相差小于该配置项指定的阀值时，则就用轮询方式的磁盘选择策略选择磁盘存储数据副本。</li>
-<li>dfs.datanode.available-space-volume-choosing-policy.balanced-space-preference-fraction, 默认值是0.75f，一般使用默认值就行。有多少比例的数据副本应该存储到剩余空间足够多的磁盘上。该配置项取值范围是0.0-1.0，一般取0.5-1.0，如果配置太小，会导致剩余空间足够的磁盘实际上没分配足够的数据副本，而剩余空间不足的磁盘取需要存储更多的数据副本，导致磁盘数据存储不均衡</li>
-</ul>
-<p>可用空间策略会以下面三种情况进行处理：</p>
-<p>1、如果所有的 volumes 磁盘可用空间都差不多，那么这些磁盘得到的最大可用空间和最小可用空间差值就会很小，这时候就会使用轮询磁盘选择策略来存放副本。</p>
-<p>2、如果 volumes 磁盘可用空间相差比较大，那么可用空间策略会将 volumes 配置中的磁盘按照一定的规则分为 highAvailableVolumes 和 lowAvailableVolumes。具体分配规则是先获取 volumes 配置的磁盘中最小可用空间，加上 balancedSpaceThreshold(10G)，然后将磁盘空间大于这个值的 volumes 放到 highAvailableVolumes 里面；小于等于这个值的 volumes 放到 lowAvailableVolumes 里面。</p>
-<p>比如我们拥有5个磁盘组成的 volumes，编号和可用空间分别为 1(1G)、2(50G)、3(25G)、4(5G)、5(30G)。按照上面的规则，这些磁盘的最小可用空间为 1G，然后加上 balancedSpaceThreshold，得到 11G，那么磁盘编号为1、4的磁盘将会放到 lowAvailableVolumes 里面，磁盘编号为2，3和5将会放到 highAvailableVolumes 里面。</p>
-<p>到现在 volumes 里面的磁盘已经都分到 highAvailableVolumes 和 lowAvailableVolumes 里面了。</p>
-<p>2.1、如果当前副本的大小大于 lowAvailableVolumes 里面所有磁盘最大的可用空间（mostAvailableAmongLowVolumes，在上面例子中，lowAvailableVolumes 里面最大磁盘可用空间为 5G），那么会采用轮询的方式从 highAvailableVolumes 里面获取相关 volumes 来存放副本。</p>
-<p>2.2、剩下的情况会以 75%（通过 dfs.datanode.available-space-volume-choosing-policy.balanced-space-preference-fraction 参数进行配置，推荐将这个参数设置成 0.5 到 1.0 之间）的概率在 highAvailableVolumes 里面以轮询的方式 volumes 来存放副本；25% 的概率在 lowAvailableVolumes 里面以轮询的方式 volumes 来存放副本。</p>
-<p>对于写多的场景，建议选roundrobin ，因为如果选AvailableSpaceVolume，在出现磁盘不均衡，或者某个磁盘维修重新上线的情况，这次磁盘容易成为瓶颈；如果一定要选AvailableSpaceVolume， 需要合理配置另外2个配置项<br>RoundRobin的问题是容易造成磁盘间的空间使用不均衡，因为每个block的大小是不确定的<br>Hadoop 3.0 推出了dn中disk间的balancer来解决这个问题</p>
-
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-          <div class="post-eof"></div>
-        
-      </footer>
-  </div>
-  
-  
-  
-  </article>
-
-    
-        <article itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block home">
+  <div class="post-block post">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/09/29/HDFS-Namenode-rpc-队列分离/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -354,9 +232,8 @@
       <meta itemprop="name" content="缠中说禅">
     </span>
       <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-            
-            <a href="/2018/09/29/HDFS-Namenode-rpc-队列分离/" class="post-title-link" itemprop="url">HDFS Namenode rpc 队列拆分</a>
+        <h1 class="post-title" itemprop="name headline">HDFS Namenode rpc 队列拆分
+
           
         </h1>
 
@@ -419,7 +296,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h2 id="集群现状"><a href="#集群现状" class="headerlink" title="集群现状"></a>集群现状</h2><p>所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：</p>
+        <h2 id="集群现状"><a href="#集群现状" class="headerlink" title="集群现状"></a>集群现状</h2><p>所有外部请求都通过NameNode的通用Clinet RPC服务，存在一些问题：</p>
 <ul>
 <li><p>DataNode协议与Client协议共用同一个RPC服务，NN挂掉重启后DN汇报blockreport时并发太高容易导致fullGC，分离RPC服务后可配置合适的handler数控制并发</p>
 </li>
@@ -482,27 +359,52 @@
 </blockquote>
 <p>(7) Rolling DNs</p>
 
-        
-      
     </div>
 
     
     
     
+        
+      
+
       <footer class="post-footer">
-          <div class="post-eof"></div>
+          
+            
+          
+          <div class="post-tags">
+            
+              <a href="/tags/HDFS/" rel="tag"># HDFS</a>
+            
+          </div>
+        
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2018/09/30/HDFS-balancer-及磁盘均衡/" rel="prev" title="HDFS 副本及磁盘选择策略">
+                  HDFS 副本及磁盘选择策略 <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
         
       </footer>
+    
   </div>
   
   
   
   </article>
 
-    
   </div>
-
-  
 
 
           </div>
@@ -521,6 +423,11 @@
 
   <aside class="sidebar">
     <div class="sidebar-inner">
+        
+        
+        
+        
+      
 
       <ul class="sidebar-nav motion-element">
         <li class="sidebar-nav-toc">
@@ -533,6 +440,8 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#集群现状"><span class="nav-number">1.</span> <span class="nav-text">集群现状</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#社区支持RPC服务按不同优先级分离，"><span class="nav-number">2.</span> <span class="nav-text">社区支持RPC服务按不同优先级分离，</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#变更方案"><span class="nav-number">3.</span> <span class="nav-text">变更方案</span></a></li></ol></div>
+        
       </div>
       <!--/noindex-->
 
